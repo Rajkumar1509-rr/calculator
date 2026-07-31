@@ -1,41 +1,57 @@
-<input id="display" readonly>
-
-<div>
-  <button onclick="append('1')">1</button>
-  <button onclick="append('2')">2</button>
-  <button onclick="append('3')">3</button>
-  <button onclick="append('4')">4</button>
-  <button onclick="append('5')">5</button>
-  <button onclick="append('6')">6</button>
-  <button onclick="append('7')">7</button>
-  <button onclick="append('8')">8</button>
-  <button onclick="append('9')">9</button>
-  <button onclick="append('0')">0</button>
-  <button onclick="append('*')">*</button>
-  <button onclick="append('+')">+</button>
-  <button onclick="append('-')">-</button>
-  <button onclick="append('.')">.</button>
-
-</div>
-
-<button onclick="calculate()">=</button>
-<button onclick="clearDisplay()">C</button>
-
-<script>
-function append(value) {
-  document.getElementById("display").value += value;
-}
-
-function calculate() {
-  try {
-    document.getElementById("display").value =
-      eval(document.getElementById("display").value);
-  } catch {
-    alert("Invalid Expression");
-  }
-}
-
-function clearDisplay() {
-  document.getElementById("display").value = "";
-}
-</script>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Scientific Calculator</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111625;font-family:Segoe UI,Arial;color:#eef1ff;padding:20px}.calculator{width:min(440px,100%);background:#20283d;padding:22px;border-radius:24px;box-shadow:0 25px 60px #0008}h1{font-size:1.45rem;margin:0 0 5px}.brief{color:#b7c0db;font-size:.9rem;line-height:1.45;margin:0 0 20px}.display{background:#0e1320;border-radius:15px;padding:16px;margin-bottom:16px;text-align:right;min-height:92px;overflow:hidden}.history{min-height:20px;color:#8793b9;font-size:.85rem;white-space:nowrap}.value{font-size:2rem;white-space:nowrap}.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}button{border:0;border-radius:12px;padding:15px 5px;background:#303b57;color:#f7f8ff;font-weight:700;font-size:1rem;cursor:pointer}button:hover{background:#404e70}.operator{color:#9fb4ff;background:#2d3b66}.equals{background:#7564f4}.equals:hover{background:#8a7bff}.danger{background:#5b3244;color:#ffb5c4}.wide{grid-column:span 2}@media(max-width:370px){.calculator{padding:15px}.keys{gap:6px}button{padding:13px 3px}}
+  </style>
+</head>
+<body>
+  <main class="calculator"><h1>Scientific Calculator</h1><p class="brief">Supports basic math, brackets, powers, square root, trigonometry and keyboard input. Trig functions use degrees.</p>
+    <section class="display" aria-live="polite"><div class="history" id="history"></div><div class="value" id="display">0</div></section>
+    <section class="keys" id="keys">
+      <button class="danger" data-action="clear">AC</button><button data-action="back">DEL</button><button data-value="(">(</button><button data-value=")">)</button><button class="operator" data-value="/">÷</button>
+      <button data-value="sin(">sin</button><button data-value="cos(">cos</button><button data-value="tan(">tan</button><button data-value="sqrt(">√</button><button class="operator" data-value="*">×</button>
+      <button data-value="7">7</button><button data-value="8">8</button><button data-value="9">9</button><button data-value="^">xʸ</button><button class="operator" data-value="-">−</button>
+      <button data-value="4">4</button><button data-value="5">5</button><button data-value="6">6</button><button data-value="pi">π</button><button class="operator" data-value="+">+</button>
+      <button data-value="1">1</button><button data-value="2">2</button><button data-value="3">3</button><button data-value="e">e</button><button class="equals" data-action="equals">=</button>
+      <button class="wide" data-value="0">0</button><button data-value=".">.</button><button data-action="sign">±</button><button data-action="equals">=</button>
+    </section>
+  </main>
+  <script>
+    let expression = ''; let previous = '';
+    const display = document.querySelector('#display'), history = document.querySelector('#history');
+    const pretty = value => value.replaceAll('*','×').replaceAll('/','÷').replaceAll('pi','π');
+    function paint() { display.textContent = pretty(expression || '0'); history.textContent = previous; }
+    function evaluate() {
+      if (!expression) return;
+      try {
+        let safe = expression
+          .replaceAll('^','**').replaceAll('pi','Math.PI').replaceAll(/\be\b/g,'Math.E')
+          .replaceAll('sqrt(','Math.sqrt(')
+          .replaceAll(/(sin|cos|tan)\(/g, 'Math.$1(Math.PI/180*');
+        if (!/^[0-9+\-*/().,\sA-Za-z]*$/.test(safe)) throw new Error('Invalid input');
+        const result = Function(`"use strict"; return (${safe})`)();
+        if (!Number.isFinite(result)) throw new Error('Invalid result');
+        previous = `${pretty(expression)} =`; expression = String(Number(result.toPrecision(12)));
+      } catch { previous = 'Error - check expression'; expression = ''; }
+      paint();
+    }
+    function input(value) { if (expression.length < 70) expression += value; paint(); }
+    document.querySelector('#keys').addEventListener('click', event => {
+      const button = event.target.closest('button'); if (!button) return;
+      const {value, action} = button.dataset;
+      if (value) input(value);
+      if (action === 'clear') { expression=''; previous=''; paint(); }
+      if (action === 'back') { expression=expression.slice(0,-1); paint(); }
+      if (action === 'equals') evaluate();
+      if (action === 'sign') { expression = expression ? `-(${expression})` : ''; paint(); }
+    });
+    document.addEventListener('keydown', event => {
+      if (/^[0-9.+\-*/()]$/.test(event.key)) input(event.key);
+      if (event.key === 'Enter' || event.key === '=') evaluate();
+      if (event.key === 'Backspace') { expression=expression.slice(0,-1); paint(); }
+      if (event.key === 'Escape') { expression=''; previous=''; paint(); }
+    }); paint();
+  </script>
+</body></html>
